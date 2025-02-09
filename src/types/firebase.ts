@@ -24,3 +24,15 @@ export interface User {
   displayName: string | null
   photoURL: string | null
 }
+
+export interface ListInvitation {
+  id: string
+  listId: string
+  listName: string
+  invitedEmail: string
+  invitedBy: string
+  invitedByEmail: string
+  status: 'pending' | 'accepted' | 'declined'
+  createdAt: Date
+  respondedAt?: Date
+}

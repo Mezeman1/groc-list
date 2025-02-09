@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/groc-list/dev-sw.js?dev-sw', { scope: '/groc-list/', type: 'classic' })

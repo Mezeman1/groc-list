@@ -11,3 +11,5 @@ const updateSW = registerSW({
     console.log('App ready to work offline')
   },
 })
+
+export { updateSW }

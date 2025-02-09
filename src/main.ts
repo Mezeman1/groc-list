@@ -4,7 +4,7 @@ import { createHead } from '@unhead/vue'
 import { createPinia } from 'pinia'
 import { createApp, markRaw } from 'vue'
 import App from './App.vue'
-import './registerSW'
+import { updateSW } from './registerSW'
 
 const head = createHead()
 const app = createApp(App)

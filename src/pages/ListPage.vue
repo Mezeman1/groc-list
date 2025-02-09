@@ -79,14 +79,28 @@ const handleBack = () => {
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center space-x-4">
         <button @click="handleBack"
-          class="text-gray-600 hover:text-gray-900 p-2 -ml-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          class="text-gray-600 hover:text-gray-900 p-2 -ml-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500">
           <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
         </button>
-        <h1 class="text-2xl font-bold text-gray-900">{{ list?.name || 'Loading...' }}</h1>
+        <div>
+          <div class="flex items-center gap-2">
+            <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <h1 class="text-2xl font-bold text-gray-900">{{ list?.name || 'Loading...' }}</h1>
+          </div>
+          <p class="text-sm text-gray-500 mt-1 flex items-center gap-1">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            {{ items.length }} items
+          </p>
+        </div>
       </div>
-      <p class="text-sm text-gray-500">{{ items.length }} items</p>
     </div>
 
     <!-- Error Message -->
@@ -96,43 +110,62 @@ const handleBack = () => {
 
     <!-- Add Item Form -->
     <div class="bg-white shadow-sm rounded-lg p-4 mb-6">
-      <form @submit.prevent="handleAddItem" class="flex space-x-4">
+      <form @submit.prevent="handleAddItem" class="flex flex-col sm:flex-row gap-4">
         <div class="flex-1">
-          <label for="itemName" class="sr-only">Item Name</label>
+          <label for="itemName" class="block text-sm font-medium text-gray-700 mb-1">Item Name</label>
           <input id="itemName" v-model="newItemName" type="text" required placeholder="Add new item"
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500" />
         </div>
-        <div class="w-24">
-          <label for="quantity" class="sr-only">Quantity</label>
+        <div class="w-full sm:w-24">
+          <label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
           <input id="quantity" v-model.number="newItemQuantity" type="number" min="1" required
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500" />
         </div>
-        <button type="submit"
-          class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          Add Item
-        </button>
+        <div class="sm:self-end">
+          <button type="submit"
+            class="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center justify-center gap-2">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            Add to List
+          </button>
+        </div>
       </form>
     </div>
 
     <!-- Items List -->
     <div class="bg-white shadow-sm rounded-lg divide-y">
-      <div v-for="item in items" :key="item.id" class="p-4 flex items-center justify-between hover:bg-gray-50"
+      <div v-for="item in items" :key="item.id"
+        class="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
         :class="{ 'bg-gray-50': item.completed }">
-        <div class="flex items-center space-x-3">
-          <input :id="item.id" type="checkbox" :checked="item.completed"
-            @change="handleToggleComplete(item.id, !item.completed)"
-            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
-          <label :for="item.id" class="flex items-center space-x-3">
-            <span class="text-gray-900" :class="{ 'line-through text-gray-500': item.completed }">
-              {{ item.name }}
-            </span>
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-              :class="item.completed ? 'bg-gray-100 text-gray-800' : 'bg-indigo-100 text-indigo-800'">
-              {{ item.quantity }}
-            </span>
-          </label>
+        <div class="flex items-center space-x-3 flex-1">
+          <div class="flex items-center h-5">
+            <input :id="item.id" type="checkbox" :checked="item.completed"
+              @change="handleToggleComplete(item.id, !item.completed)"
+              class="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer" />
+          </div>
+          <div class="flex flex-col sm:flex-row sm:items-center sm:gap-3 flex-1">
+            <div class="flex items-center gap-2 flex-1">
+              <label :for="item.id" class="text-gray-900 cursor-pointer select-none flex-1"
+                :class="{ 'line-through text-gray-500': item.completed }">
+                {{ item.name }}
+              </label>
+              <div class="flex items-center gap-1 text-gray-500">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                </svg>
+                <span class="inline-flex items-center px-2 py-0.5 text-sm font-medium"
+                  :class="item.completed ? 'text-gray-500' : 'text-gray-900'">
+                  × {{ item.quantity }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-        <button @click="handleDeleteItem(item.id)" class="text-red-600 hover:text-red-900 focus:outline-none">
+        <button @click="handleDeleteItem(item.id)"
+          class="ml-4 text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50 focus:outline-none">
           <span class="sr-only">Delete item</span>
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -142,9 +175,22 @@ const handleBack = () => {
       </div>
 
       <!-- Empty State -->
-      <div v-if="items.length === 0" class="p-4 text-center text-gray-500">
-        No items in this list yet. Add some items to get started!
+      <div v-if="items.length === 0" class="p-8 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No Items Yet</h3>
+        <p class="text-gray-500">Add some items to your grocery list!</p>
       </div>
+    </div>
+
+    <!-- Completed Items Summary -->
+    <div v-if="items.length > 0" class="mt-4 text-sm text-gray-500 flex items-center gap-2">
+      <svg class="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+      {{ items.filter(item => item.completed).length }} of {{ items.length }} items completed
     </div>
   </div>
 </template>

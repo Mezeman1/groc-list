@@ -168,12 +168,5 @@ const getPendingInvitationsCount = (listId: string) => {
       <h3 class="text-lg font-medium text-gray-900 mb-2">No Lists Yet</h3>
       <p class="text-gray-500">Create your first grocery list to get started!</p>
     </div>
-
-    <div class="flex items-center space-x-4">
-      <template v-if="auth.user">
-        <InvitationDropdown @invitation-accepted="loadLists" />
-        <span class="text-gray-300">{{ auth.user.email }}</span>
-      </template>
-    </div>
   </div>
 </template>

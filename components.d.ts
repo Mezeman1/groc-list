@@ -10,6 +10,7 @@ declare module 'vue' {
     GroceryLists: typeof import('./src/components/GroceryLists.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
     InvitationDropdown: typeof import('./src/components/InvitationDropdown.vue')['default']
+    ItemSuggestions: typeof import('./src/components/ItemSuggestions.vue')['default']
     NavBar: typeof import('./src/components/NavBar.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

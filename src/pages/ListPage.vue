@@ -3,8 +3,10 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { addItemToList, getListItems, toggleItemComplete, deleteItem, getList, getUserById, removeMemberFromList, reorderItems, onListItemsChange } from '@/services/firebase-service'
+import { updateItemCorrelations } from '@/services/suggestions-service'
 import type { GroceryItem, GroceryList, User } from '@/types/firebase'
 import draggable from 'vuedraggable'
+import ItemSuggestions from '@/components/ItemSuggestions.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -86,16 +88,21 @@ const loadMembers = async () => {
   }
 }
 
-const handleAddItem = async () => {
-  if (!newItemName.value.trim()) return
+const handleAddItem = async (itemName: string = newItemName.value.trim()) => {
+  if (!itemName) return
 
   try {
-    await addItemToList(listId, newItemName.value.trim(), newItemQuantity.value)
+    await addItemToList(listId, itemName, newItemQuantity.value)
+    await updateItemCorrelations(itemName, listId)
     newItemName.value = ''
     newItemQuantity.value = 1
   } catch (e: any) {
     error.value = e.message
   }
+}
+
+const handleSuggestionSelect = async (suggestion: string) => {
+  await handleAddItem(suggestion)
 }
 
 const handleToggleComplete = async (itemId: string, completed: boolean) => {
@@ -249,7 +256,7 @@ const handleReorder = async () => {
 
     <!-- Add Item Form -->
     <div class="bg-white shadow-sm rounded-lg p-4 mb-6">
-      <form @submit.prevent="handleAddItem" class="flex flex-col sm:flex-row gap-4">
+      <form @submit.prevent="handleAddItem()" class="flex flex-col sm:flex-row gap-4">
         <div class="flex-1">
           <label for="itemName" class="block text-sm font-medium text-gray-700 mb-1">Item Name</label>
           <input id="itemName" v-model="newItemName" type="text" required placeholder="Add new item"
@@ -271,6 +278,12 @@ const handleReorder = async () => {
           </button>
         </div>
       </form>
+
+      <!-- Add ItemSuggestions component -->
+      <ItemSuggestions
+        :list-id="listId"
+        @select="handleSuggestionSelect"
+      />
     </div>
 
     <!-- Items List -->

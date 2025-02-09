@@ -19,6 +19,15 @@ export interface GroceryItem {
   order: number
 }
 
+export interface ItemCorrelation {
+  id: string
+  itemName: string
+  correlatedItemName: string
+  frequency: number
+  lastUpdated: Date
+  userId: string
+}
+
 export interface User {
   uid: string
   email: string

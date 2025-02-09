@@ -13,6 +13,9 @@ import {
   writeBatch,
   serverTimestamp,
   setDoc,
+  onSnapshot,
+  orderBy,
+  limit,
 } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import type { GroceryList, GroceryItem, ListInvitation, User } from '../types/firebase'
@@ -34,6 +37,11 @@ export const createList = async (name: string) => {
 export const addItemToList = async (listId: string, itemName: string, quantity: number = 1) => {
   if (!auth.currentUser) throw new Error('User not authenticated')
 
+  // Get the current highest order
+  const q = query(collection(db, 'items'), where('listId', '==', listId), orderBy('order', 'desc'), limit(1))
+  const querySnapshot = await getDocs(q)
+  const highestOrder = querySnapshot.empty ? 0 : querySnapshot.docs[0].data().order || 0
+
   const newItem: Omit<GroceryItem, 'id'> = {
     listId,
     name: itemName,
@@ -41,6 +49,7 @@ export const addItemToList = async (listId: string, itemName: string, quantity: 
     completed: false,
     createdBy: auth.currentUser.uid,
     createdAt: new Date(),
+    order: highestOrder + 1,
   }
 
   const docRef = await addDoc(collection(db, 'items'), newItem)
@@ -334,4 +343,18 @@ export const reorderItems = async (listId: string, updates: { id: string; order:
   })
 
   await batch.commit()
+}
+
+export const onListItemsChange = (listId: string, callback: (items: GroceryItem[]) => void) => {
+  if (!auth.currentUser) throw new Error('User not authenticated')
+
+  const q = query(collection(db, 'items'), where('listId', '==', listId), orderBy('order', 'asc'))
+
+  return onSnapshot(q, snapshot => {
+    const items = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as GroceryItem[]
+    callback(items)
+  })
 }

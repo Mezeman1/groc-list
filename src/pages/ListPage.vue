@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { addItemToList, getListItems, toggleItemComplete, deleteItem, getList, getUserById, removeMemberFromList, reorderItems } from '@/services/firebase-service'
+import { addItemToList, getListItems, toggleItemComplete, deleteItem, getList, getUserById, removeMemberFromList, reorderItems, onListItemsChange } from '@/services/firebase-service'
 import type { GroceryItem, GroceryList, User } from '@/types/firebase'
 import draggable from 'vuedraggable'
 
@@ -40,23 +40,33 @@ interface MoveEvent {
   draggedContext: DragContext;
 }
 
+const unsubscribeItems = ref<(() => void) | null>(null)
+
 onMounted(async () => {
   await loadList()
-  await loadItems()
+  setupRealtimeItems()
   await loadMembers()
 })
 
-const loadList = async () => {
+onUnmounted(() => {
+  if (unsubscribeItems.value) {
+    unsubscribeItems.value()
+  }
+})
+
+const setupRealtimeItems = () => {
   try {
-    list.value = await getList(listId)
+    unsubscribeItems.value = onListItemsChange(listId, (newItems) => {
+      items.value = newItems
+    })
   } catch (e: any) {
     error.value = e.message
   }
 }
 
-const loadItems = async () => {
+const loadList = async () => {
   try {
-    items.value = await getListItems(listId)
+    list.value = await getList(listId)
   } catch (e: any) {
     error.value = e.message
   }
@@ -83,7 +93,6 @@ const handleAddItem = async () => {
     await addItemToList(listId, newItemName.value.trim(), newItemQuantity.value)
     newItemName.value = ''
     newItemQuantity.value = 1
-    await loadItems()
   } catch (e: any) {
     error.value = e.message
   }
@@ -92,7 +101,6 @@ const handleAddItem = async () => {
 const handleToggleComplete = async (itemId: string, completed: boolean) => {
   try {
     await toggleItemComplete(itemId, completed)
-    await loadItems()
   } catch (e: any) {
     error.value = e.message
   }
@@ -101,7 +109,6 @@ const handleToggleComplete = async (itemId: string, completed: boolean) => {
 const handleDeleteItem = async (itemId: string) => {
   try {
     await deleteItem(itemId)
-    await loadItems()
   } catch (e: any) {
     error.value = e.message
   }

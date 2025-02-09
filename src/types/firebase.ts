@@ -16,6 +16,7 @@ export interface GroceryItem {
   createdAt: Date
   completedBy?: string
   completedAt?: Date
+  order: number
 }
 
 export interface User {

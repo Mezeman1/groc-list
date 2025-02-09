@@ -16,7 +16,7 @@ const handleLogout = async () => {
 </script>
 
 <template>
-  <nav class="bg-gray-800">
+  <nav class="bg-pink-900">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16">
         <div class="flex items-center">
@@ -26,19 +26,19 @@ const handleLogout = async () => {
         </div>
         <div class="flex items-center space-x-4">
           <template v-if="auth.user">
-            <span class="text-gray-300">{{ auth.user.email }}</span>
+            <span class="text-pink-100">{{ auth.user.email }}</span>
             <button @click="handleLogout"
-              class="bg-gray-700 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+              class="bg-pink-800 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-pink-900 focus:ring-pink-500">
               Logout
             </button>
           </template>
           <template v-else>
             <router-link to="/login"
-              class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+              class="text-pink-100 hover:bg-pink-800 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
               Login
             </router-link>
             <router-link to="/register"
-              class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+              class="text-pink-100 hover:bg-pink-800 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
               Register
             </router-link>
           </template>

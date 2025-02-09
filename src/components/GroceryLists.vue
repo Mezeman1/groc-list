@@ -84,7 +84,7 @@ const getPendingInvitationsCount = (listId: string) => {
     <!-- Header Section -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
       <div class="flex items-center gap-2">
-        <svg class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg class="h-8 w-8 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
@@ -93,7 +93,7 @@ const getPendingInvitationsCount = (listId: string) => {
       <div class="flex items-center gap-2 sm:gap-4">
         <InvitationDropdown @invitation-accepted="loadLists" />
         <button @click="showNewListForm = true"
-          class="flex-1 sm:flex-none bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm sm:text-base flex items-center gap-2">
+          class="flex-1 sm:flex-none bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm sm:text-base flex items-center gap-2">
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
@@ -110,7 +110,7 @@ const getPendingInvitationsCount = (listId: string) => {
     <!-- New List Form -->
     <div v-if="showNewListForm" class="bg-white shadow-sm rounded-lg p-4 mb-6">
       <h2 class="text-lg font-medium mb-4 flex items-center gap-2">
-        <svg class="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg class="h-5 w-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
@@ -120,7 +120,7 @@ const getPendingInvitationsCount = (listId: string) => {
         <div>
           <label for="listName" class="block text-sm font-medium text-gray-700">List Name</label>
           <input id="listName" v-model="newListName" type="text" required
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500" />
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" />
         </div>
         <div class="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
           <button type="button" @click="showNewListForm = false"
@@ -128,7 +128,7 @@ const getPendingInvitationsCount = (listId: string) => {
             Cancel
           </button>
           <button type="submit"
-            class="w-full sm:w-auto bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 order-1 sm:order-2 flex items-center justify-center gap-2">
+            class="w-full sm:w-auto bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 order-1 sm:order-2 flex items-center justify-center gap-2">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
@@ -145,7 +145,7 @@ const getPendingInvitationsCount = (listId: string) => {
         <div class="flex justify-between items-start mb-2">
           <router-link :to="'/list/' + list.id" class="block flex-1">
             <div class="flex items-center gap-2">
-              <svg class="h-5 w-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg class="h-5 w-5 text-pink-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
@@ -173,9 +173,9 @@ const getPendingInvitationsCount = (listId: string) => {
         <div v-if="isListOwner(list)" class="mt-4 pt-4 border-t">
           <form @submit.prevent="selectedList = list.id; handleInviteMember()" class="flex flex-col sm:flex-row gap-2">
             <input v-model="newMemberEmail" type="email" placeholder="Invite by email"
-              class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm" />
+              class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" />
             <button type="submit"
-              class="w-full sm:w-auto bg-green-600 text-white px-3 py-2 rounded-md hover:bg-green-700 text-sm whitespace-nowrap flex items-center justify-center gap-2">
+              class="w-full sm:w-auto bg-pink-600 text-white px-3 py-2 rounded-md hover:bg-pink-700 text-sm whitespace-nowrap flex items-center justify-center gap-2">
               <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />

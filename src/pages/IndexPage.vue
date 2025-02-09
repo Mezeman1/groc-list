@@ -15,7 +15,7 @@ const activeTab = ref('lists')
           class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2"
           :class="[
             activeTab === 'lists'
-              ? 'border-green-500 text-green-600'
+              ? 'border-pink-500 text-pink-600'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           ]">
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -28,7 +28,7 @@ const activeTab = ref('lists')
           class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2"
           :class="[
             activeTab === 'profile'
-              ? 'border-green-500 text-green-600'
+              ? 'border-pink-500 text-pink-600'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           ]">
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

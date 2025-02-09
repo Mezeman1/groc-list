@@ -157,14 +157,14 @@ const handleReorder = async () => {
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center space-x-4">
         <button @click="handleBack"
-          class="text-gray-600 hover:text-gray-900 p-2 -ml-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500">
+          class="text-gray-600 hover:text-gray-900 p-2 -ml-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-500">
           <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
         </button>
         <div>
           <div class="flex items-center gap-2">
-            <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg class="h-6 w-6 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
@@ -197,7 +197,7 @@ const handleReorder = async () => {
       <!-- Members Menu Button -->
       <div class="relative" v-if="isListOwner() && members.length > 0">
         <button @click="showMembersMenu = !showMembersMenu"
-          class="text-gray-600 hover:text-gray-900 p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500">
+          class="text-gray-600 hover:text-gray-900 p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-500">
           <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -209,7 +209,7 @@ const handleReorder = async () => {
           class="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg z-10 py-1 border">
           <div class="px-4 py-2 border-b flex items-center justify-between">
             <h3 class="text-sm font-medium text-gray-900">List Members</h3>
-            <div v-if="isListOwner()" class="text-xs text-green-600">Owner</div>
+            <div v-if="isListOwner()" class="text-xs text-pink-600">Owner</div>
           </div>
           <div class="max-h-64 overflow-y-auto">
             <div v-for="member in members" :key="member.uid"
@@ -222,7 +222,7 @@ const handleReorder = async () => {
                   <div class="text-sm font-medium text-gray-900">
                     {{ member.email }}
                   </div>
-                  <div v-if="member.uid === list?.createdBy" class="text-xs text-green-600">
+                  <div v-if="member.uid === list?.createdBy" class="text-xs text-pink-600">
                     Owner
                   </div>
                 </div>
@@ -253,16 +253,16 @@ const handleReorder = async () => {
         <div class="flex-1">
           <label for="itemName" class="block text-sm font-medium text-gray-700 mb-1">Item Name</label>
           <input id="itemName" v-model="newItemName" type="text" required placeholder="Add new item"
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500" />
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" />
         </div>
         <div class="w-full sm:w-24">
           <label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
           <input id="quantity" v-model.number="newItemQuantity" type="number" min="1" required
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500" />
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500" />
         </div>
         <div class="sm:self-end">
           <button type="submit"
-            class="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center justify-center gap-2">
+            class="w-full bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 flex items-center justify-center gap-2">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -282,7 +282,7 @@ const handleReorder = async () => {
         item-key="id"
         handle=".drag-handle"
         :animation="200"
-        ghost-class="bg-green-50"
+        ghost-class="bg-pink-50"
         :move="({ relatedContext, draggedContext }: MoveEvent) => {
           return draggedContext.element.completed === relatedContext.element?.completed
         }"
@@ -304,7 +304,7 @@ const handleReorder = async () => {
                 <div class="flex items-center h-5">
                   <input :id="item.id" type="checkbox" :checked="item.completed"
                     @change="handleToggleComplete(item.id, !item.completed)"
-                    class="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer" />
+                    class="h-5 w-5 text-pink-600 focus:ring-pink-500 border-gray-300 rounded cursor-pointer" />
                 </div>
               </div>
               <div class="flex flex-col sm:flex-row sm:items-center sm:gap-3 flex-1">
@@ -339,7 +339,7 @@ const handleReorder = async () => {
       <!-- Completed Items Section -->
       <div v-if="completedItems.length > 0" class="border-t border-gray-100">
         <div class="px-4 py-2 bg-gray-50 text-sm font-medium text-gray-500 flex items-center gap-2">
-          <svg class="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="h-5 w-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
           Completed Items
@@ -350,7 +350,7 @@ const handleReorder = async () => {
           item-key="id"
           handle=".drag-handle"
           :animation="200"
-          ghost-class="bg-green-50"
+          ghost-class="bg-pink-50"
           :move="({ relatedContext, draggedContext }: MoveEvent) => {
             return draggedContext.element.completed === relatedContext.element?.completed
           }"
@@ -371,7 +371,7 @@ const handleReorder = async () => {
                   <div class="flex items-center h-5">
                     <input :id="item.id" type="checkbox" :checked="item.completed"
                       @change="handleToggleComplete(item.id, !item.completed)"
-                      class="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer" />
+                      class="h-5 w-5 text-pink-600 focus:ring-pink-500 border-gray-300 rounded cursor-pointer" />
                   </div>
                 </div>
                 <div class="flex flex-col sm:flex-row sm:items-center sm:gap-3 flex-1">
@@ -417,7 +417,7 @@ const handleReorder = async () => {
 
     <!-- Completed Items Summary -->
     <div v-if="items.length > 0" class="mt-4 text-sm text-gray-500 flex items-center gap-2">
-      <svg class="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg class="h-5 w-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
       </svg>
       {{ items.filter(item => item.completed).length }} of {{ items.length }} items completed

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
-import InvitationDropdown from './InvitationDropdown.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -27,7 +26,6 @@ const handleLogout = async () => {
         </div>
         <div class="flex items-center space-x-4">
           <template v-if="auth.user">
-            <InvitationDropdown />
             <span class="text-gray-300">{{ auth.user.email }}</span>
             <button @click="handleLogout"
               class="bg-gray-700 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">

@@ -12,9 +12,10 @@ import {
   arrayRemove,
   writeBatch,
   serverTimestamp,
+  setDoc,
 } from 'firebase/firestore'
 import { db, auth } from '../firebase'
-import type { GroceryList, GroceryItem, ListInvitation } from '../types/firebase'
+import type { GroceryList, GroceryItem, ListInvitation, User } from '../types/firebase'
 
 export const createList = async (name: string) => {
   if (!auth.currentUser) throw new Error('User not authenticated')
@@ -287,6 +288,50 @@ export const respondToInvitation = async (invitationId: string, accept: boolean)
       members: arrayUnion(auth.currentUser.uid),
     })
   }
+
+  await batch.commit()
+}
+
+export const getUserById = async (userId: string) => {
+  const userRef = doc(db, 'users', userId)
+  const userDoc = await getDoc(userRef)
+
+  if (!userDoc.exists()) {
+    throw new Error('User not found')
+  }
+
+  return {
+    uid: userDoc.id,
+    ...userDoc.data(),
+  } as User
+}
+
+export const createOrUpdateUser = async (user: User) => {
+  if (!user) return
+
+  const userRef = doc(db, 'users', user.uid)
+  await setDoc(
+    userRef,
+    {
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      updatedAt: new Date(),
+    },
+    { merge: true }
+  )
+}
+
+export const reorderItems = async (listId: string, updates: { id: string; order: number }[]) => {
+  if (!auth.currentUser) throw new Error('User not authenticated')
+
+  const batch = writeBatch(db)
+
+  // Update each item's order
+  updates.forEach(update => {
+    const itemRef = doc(db, 'items', update.id)
+    batch.update(itemRef, { order: update.order })
+  })
 
   await batch.commit()
 }

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { User } from 'firebase/auth'
 import { loginWithEmail, registerWithEmail, loginWithGoogle, logout, onAuthStateChange } from '@/services/auth-service'
+import { createOrUpdateUser } from '@/services/firebase-service'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -10,8 +11,11 @@ export const useAuthStore = defineStore('auth', () => {
   const isInitialized = ref(false)
 
   // Initialize auth state listener
-  onAuthStateChange(newUser => {
+  onAuthStateChange(async newUser => {
     user.value = newUser
+    if (newUser) {
+      await createOrUpdateUser(newUser)
+    }
     loading.value = false
     isInitialized.value = true
   })

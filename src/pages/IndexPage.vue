@@ -1,97 +1,143 @@
 <script setup lang="ts">
-// See vite.config.ts for details about automatic imports
-const store = useStore()
+import { ref, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { createList, getUserLists, addMemberToList } from '@/services/firebase-service'
+import type { GroceryList } from '@/types/firebase'
+
+const auth = useAuthStore()
+const lists = ref<GroceryList[]>([])
+const newListName = ref('')
+const showNewListForm = ref(false)
+const newMemberEmail = ref('')
+const selectedList = ref<string | null>(null)
+const error = ref('')
+
+onMounted(async () => {
+  await loadLists()
+})
+
+const loadLists = async () => {
+  try {
+    lists.value = await getUserLists()
+  } catch (e: any) {
+    error.value = e.message
+  }
+}
+
+const handleCreateList = async () => {
+  if (!newListName.value.trim()) return
+
+  try {
+    await createList(newListName.value.trim())
+    newListName.value = ''
+    showNewListForm.value = false
+    await loadLists()
+  } catch (e: any) {
+    error.value = e.message
+  }
+}
+
+const handleAddMember = async () => {
+  if (!selectedList.value || !newMemberEmail.value.trim()) return
+
+  try {
+    await addMemberToList(selectedList.value, newMemberEmail.value.trim())
+    newMemberEmail.value = ''
+    await loadLists()
+  } catch (e: any) {
+    error.value = e.message
+  }
+}
 </script>
+
 <template>
-  <header>
-    <h1>Vite + Vue 3 + TypeScript + Tailwind + Playwright Starter Template v{{ store.appMeta.version }}</h1>
-    <p>
-      Opinionated, production ready template for Vite and Vue 3. MIT licensed,
-      <a href="https://github.com/Uninen/vite-ts-tailwind-starter">available on GitHub</a>.
-    </p>
-  </header>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">My Grocery Lists</h1>
+      <button
+        @click="showNewListForm = true"
+        class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      >
+        Create New List
+      </button>
+    </div>
 
-  <main>
-    <HelloWorld msg="Hello World Component" />
+    <!-- Error Message -->
+    <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      {{ error }}
+    </div>
 
-    <h2>Project setup and usage</h2>
+    <!-- New List Form -->
+    <div v-if="showNewListForm" class="bg-white shadow-sm rounded-lg p-4 mb-6">
+      <h2 class="text-lg font-medium mb-4">Create New List</h2>
+      <form @submit.prevent="handleCreateList" class="space-y-4">
+        <div>
+          <label for="listName" class="block text-sm font-medium text-gray-700">List Name</label>
+          <input
+            id="listName"
+            v-model="newListName"
+            type="text"
+            required
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          />
+        </div>
+        <div class="flex justify-end space-x-3">
+          <button
+            type="button"
+            @click="showNewListForm = false"
+            class="bg-white text-gray-700 px-4 py-2 border rounded-md hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+          >
+            Create List
+          </button>
+        </div>
+      </form>
+    </div>
 
-    <h4>Install dependencies</h4>
+    <!-- Lists Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div
+        v-for="list in lists"
+        :key="list.id"
+        class="bg-white shadow-sm rounded-lg p-4 hover:shadow-md transition-shadow"
+      >
+        <router-link :to="'/list/' + list.id" class="block">
+          <h3 class="text-lg font-medium text-gray-900">{{ list.name }}</h3>
+          <p class="text-sm text-gray-500 mt-1">{{ list.members.length }} members</p>
+        </router-link>
 
-    <pre>pnpm i</pre>
+        <!-- Share List Form -->
+        <div class="mt-4 pt-4 border-t">
+          <form @submit.prevent="selectedList = list.id; handleAddMember()" class="flex space-x-2">
+            <input
+              v-model="newMemberEmail"
+              type="email"
+              placeholder="Add member by email"
+              class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+            />
+            <button
+              type="submit"
+              class="bg-indigo-600 text-white px-3 py-2 rounded-md hover:bg-indigo-700 text-sm"
+            >
+              Share
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
 
-    <h4>Run development server</h4>
-
-    <pre>pnpm dev</pre>
-
-    <h4>Run unit + component tests (Vitest)</h4>
-
-    <pre>pnpm test</pre>
-
-    <h4>Run e2e tests (Playwright)</h4>
-
-    <pre>pnpm test-e2e</pre>
-
-    <h4>Build for production</h4>
-
-    <pre>pnpm build</pre>
-
-    <h4>Other</h4>
-
-    <p>See <code>package.json</code> for all available commands.</p>
-
-    <h2>Notes and further documentation</h2>
-
-    <h3>Typed ENV Variables</h3>
-
-    <p>
-      Vite exposes a special <code>meta.env</code> object for ENV variables (see
-      <a href="https://vitejs.dev/guide/env-and-mode.html">official docs</a>). This template extends that object and
-      adds custom typed variables which you can easily use and modify to your needs.
-    </p>
-
-    <p>
-      See <code>vite.config.ts</code> and <code>src/env.d.ts</code> for the configuration and
-      <code>src/App.vue</code> for usage example.
-    </p>
-
-    <h3>Code Coverage</h3>
-
-    <p>
-      Code coverage is provided from unit + component tests by
-      <a href="https://vitest.dev/guide/coverage.html">Vitest and V8</a>.
-    </p>
-
-    <p>
-      E2E coverage is a bit trickier to do because of the way Vite works. Typical Vite pipelines don't use babel at all
-      which is needed above for automatically instrument the transpilated code. Vite is powered by eslint which has
-      decided <a href="https://github.com/evanw/esbuild/issues/184"> code coverage being out of scope </a>.
-    </p>
-
-    <h2>Elsewhere</h2>
-
-    <ul>
-      <li>Follow <a href="https://twitter.com/uninen">@Uninen on Twitter</a></li>
-      <li>
-        Read continuously updating learnings from Vite / Vue / TypeScript and other Web development topics on my
-        <a href="https://til.unessa.net/">Today I Learned</a> site
-      </li>
-    </ul>
-
-    <h2>Contributing</h2>
-
-    <p>
-      Contributions are welcome! Please follow the
-      <a href="https://www.contributor-covenant.org/version/2/0/code_of_conduct/">code of conduct</a>
-      when interacting with others.
-    </p>
-  </main>
-  <footer>
-    <p>
-      vite-ts-tailwind-starter v{{ store.appMeta.version }} by <a href="https://twitter.com/uninen">@Uninen</a> &copy;
-      2020-{{ new Date().getFullYear() }}.
-      <template v-if="store.appMeta.builtAt"> Site built {{ store.appMeta.builtAt.toLocaleDateString() }}. </template>
-      <template v-else> Development mode. </template>
-    </p>
-  </footer>
+    <!-- Empty State -->
+    <div
+      v-if="lists.length === 0"
+      class="text-center py-12 bg-white rounded-lg shadow-sm"
+    >
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No Lists Yet</h3>
+      <p class="text-gray-500">Create your first grocery list to get started!</p>
+    </div>
+  </div>
 </template>

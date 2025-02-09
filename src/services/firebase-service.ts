@@ -18,6 +18,7 @@ import {
   limit,
 } from 'firebase/firestore'
 import { db, auth } from '../firebase'
+import type { User as FirebaseAuthUser } from 'firebase/auth'
 import type { GroceryList, GroceryItem, ListInvitation, User } from '../types/firebase'
 
 export const createList = async (name: string) => {
@@ -315,7 +316,7 @@ export const getUserById = async (userId: string) => {
   } as User
 }
 
-export const createOrUpdateUser = async (user: User) => {
+export const createOrUpdateUser = async (user: FirebaseAuthUser) => {
   if (!user) return
 
   const userRef = doc(db, 'users', user.uid)

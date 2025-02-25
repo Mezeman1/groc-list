@@ -24,15 +24,26 @@ const displayQuantity = computed(() => {
     const unit = props.item.unit ? props.item.unit : ''
     return `× ${quantity} ${unit}`
 })
+
+// Add animation classes based on completed state
+const animationClasses = computed(() => {
+    if (props.item.completed) {
+        return 'opacity-75 scale-98 translate-x-1'
+    }
+    return 'opacity-100 scale-100 translate-x-0'
+})
 </script>
 
 <template>
     <div @click="handleToggleComplete"
-        class="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
-        :class="{ 'bg-green-50': item.completed }">
+        class="p-4 flex items-center justify-between hover:bg-gray-50 transition-all duration-300 cursor-pointer"
+        :class="[
+            item.completed ? 'bg-green-50' : 'bg-white',
+            animationClasses
+        ]">
         <div class="flex items-center space-x-3 flex-1">
             <div class="flex-shrink-0">
-                <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center"
+                <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors"
                     :class="item.completed ? 'border-green-500 bg-green-500' : 'border-gray-300'">
                     <svg v-if="item.completed" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
@@ -43,7 +54,9 @@ const displayQuantity = computed(() => {
 
             <div class="flex flex-col">
                 <div class="flex items-center gap-2">
-                    <span :class="{ 'line-through text-gray-500': item.completed }">
+                    <span
+                        :class="{ 'line-through text-gray-500 font-medium': item.completed, 'font-medium': !item.completed }"
+                        class="transition-all">
                         {{ item.name }}
                     </span>
                     <span class="text-sm text-gray-500">

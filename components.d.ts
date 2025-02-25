@@ -23,6 +23,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     ShoppingMode: typeof import('./src/components/ShoppingMode.vue')['default']
     ShoppingModeItem: typeof import('./src/components/ShoppingModeItem.vue')['default']
+    ShoppingModeToggle: typeof import('./src/components/ShoppingModeToggle.vue')['default']
     UserManagement: typeof import('./src/components/UserManagement.vue')['default']
   }
 }

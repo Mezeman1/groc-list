@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -191,6 +191,16 @@ onMounted(async () => {
   await loadList()
   setupRealtimeItems()
   await loadMembers()
+
+  // Shopping mode onboarding
+  const hasSeenBefore = localStorage.getItem(`shopping-mode-tooltip-seen-${listId}`)
+
+  if (!hasSeenBefore && items.value.length > 2) {
+    // Wait a second before showing the tooltip to let the page load
+    setTimeout(() => {
+      showShoppingModeTooltip.value = true
+    }, 1000)
+  }
 })
 
 onUnmounted(() => {
@@ -332,6 +342,25 @@ const handleQuickAdd = async () => {
 const toggleShoppingMode = () => {
   isShoppingMode.value = !isShoppingMode.value
 }
+
+// Shopping mode onboarding
+const showShoppingModeTooltip = ref(false)
+const hasSeenShoppingModeTooltip = ref(false)
+
+const dismissShoppingModeTooltip = () => {
+  showShoppingModeTooltip.value = false
+  hasSeenShoppingModeTooltip.value = true
+  localStorage.setItem(`shopping-mode-tooltip-seen-${listId}`, 'true')
+}
+
+// Hide tooltip when shopping mode is activated
+watch(isShoppingMode, (newValue) => {
+  if (newValue) {
+    showShoppingModeTooltip.value = false
+    hasSeenShoppingModeTooltip.value = true
+    localStorage.setItem(`shopping-mode-tooltip-seen-${listId}`, 'true')
+  }
+})
 </script>
 
 <template>
@@ -340,6 +369,39 @@ const toggleShoppingMode = () => {
     <ListHeader :list="list" :item-count="items.length" :is-owner="isListOwner()" :members="members"
       :is-shopping-mode="isShoppingMode" @toggle-shopping-mode="toggleShoppingMode"
       @remove-member="handleRemoveMember" />
+
+    <!-- Shopping Mode Onboarding Tooltip -->
+    <div v-if="showShoppingModeTooltip && items.length > 2"
+      class="fixed bottom-4 right-4 w-80 bg-white rounded-lg shadow-xl border border-pink-200 p-4 z-50 animate-bounce-once">
+      <div class="absolute -top-2 -right-2">
+        <button @click="dismissShoppingModeTooltip"
+          class="bg-pink-100 rounded-full p-1 text-pink-700 hover:bg-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-500">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="flex items-start mb-3">
+        <div class="bg-pink-100 rounded-full p-2 mr-3">
+          <svg class="h-6 w-6 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900">Ready to go shopping?</h3>
+          <p class="text-sm text-gray-600 mt-1">
+            Try Shopping Mode to view your items by category and aisle for an easier in-store experience!
+          </p>
+        </div>
+      </div>
+
+      <button @click="toggleShoppingMode"
+        class="w-full bg-pink-600 text-white p-2 rounded-md font-medium hover:bg-pink-700 transition-colors">
+        Try Shopping Mode
+      </button>
+    </div>
 
     <!-- Error Message -->
     <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -394,32 +456,44 @@ const toggleShoppingMode = () => {
 
 
     <!-- Shopping Mode Banner -->
-    <div v-if="isShoppingMode" class="bg-pink-50 border border-pink-200 rounded-lg p-3 mb-4 text-pink-800">
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-2 text-sm font-medium">
-          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div v-if="isShoppingMode"
+      class="bg-gradient-to-r from-pink-600 to-pink-500 text-white rounded-lg p-4 mb-4 shadow-md relative overflow-hidden">
+      <!-- Visual indicator for shopping mode -->
+      <div class="absolute top-0 right-0 w-24 h-24 transform translate-x-8 -translate-y-8">
+        <div class="absolute top-0 right-0 w-full h-full bg-pink-400 opacity-30 rounded-full"></div>
+      </div>
+
+      <div class="flex items-center justify-between relative z-10">
+        <div class="flex items-center gap-2">
+          <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
-          <span>Shopping Mode Active</span>
+          <div>
+            <div class="font-bold text-lg">Shopping Mode Active</div>
+            <div class="text-sm text-pink-100">Items grouped by category and aisle for easier shopping</div>
+          </div>
         </div>
-        <button @click="isShoppingMode = false" class="text-pink-700 px-2 py-1 rounded hover:bg-pink-100 text-xs">
-          Exit
+        <button @click="isShoppingMode = false"
+          class="bg-white text-pink-600 hover:bg-pink-50 px-3 py-1.5 rounded font-medium text-sm">
+          Exit Shopping Mode
         </button>
       </div>
 
       <!-- Quick Add -->
-      <form @submit.prevent="handleQuickAdd" class="flex items-center gap-2">
+      <form @submit.prevent="handleQuickAdd" class="mt-4 flex items-center gap-2 relative z-10">
         <div class="flex-1 relative rounded-md shadow-sm">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-pink-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+          </div>
           <input type="text" v-model="quickAddItem" placeholder="Quickly add a missed item..."
-            class="block w-full rounded-md border-pink-300 bg-white focus:border-pink-500 focus:ring-pink-500 pl-3 pr-3 py-2 text-sm" />
+            class="block w-full rounded-md border-0 ring-1 ring-inset ring-pink-300 bg-white/90 focus:ring-2 focus:ring-white pl-10 pr-3 py-2 text-sm" />
         </div>
         <button type="submit"
-          class="inline-flex items-center p-2 border border-transparent rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
-          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          <span class="sr-only">Add</span>
+          class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-pink-600 bg-white hover:bg-pink-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+          Add Item
         </button>
       </form>
     </div>
@@ -486,3 +560,21 @@ const toggleShoppingMode = () => {
     </div>
   </div>
 </template>
+
+<style>
+@keyframes bounce-once {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-bounce-once {
+  animation: bounce-once 2s ease-in-out 3;
+}
+</style>

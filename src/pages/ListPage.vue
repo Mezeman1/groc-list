@@ -36,6 +36,8 @@ const isLoadingMembers = ref(false)
 const showMembersMenu = ref(false)
 const filterBy = ref('all')
 const sortBy = ref('order')
+const searchQuery = ref('')
+const isShoppingMode = ref(false)
 
 const listId = route.params.id as string
 
@@ -61,6 +63,16 @@ const filteredSortedItems = computed(() => {
   // First, filter the items
   let result = [...items.value]
 
+  // Apply search query filter
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase().trim()
+    result = result.filter(item =>
+      item.name.toLowerCase().includes(query) ||
+      (item.category && item.category.toLowerCase().includes(query))
+    )
+  }
+
+  // Apply category/status filters
   if (filterBy.value === 'completed') {
     result = result.filter(item => item.completed)
   } else if (filterBy.value === 'uncompleted') {
@@ -103,6 +115,47 @@ const filteredSortedItems = computed(() => {
   // If sortBy.value === 'order', we keep the original order
 
   return result
+})
+
+// Items for shopping mode - uncompleted first, then sorted by aisle if available
+const shoppingModeItems = computed(() => {
+  const uncompleted = items.value.filter(item => !item.completed)
+  const completed = items.value.filter(item => item.completed)
+
+  // Sort uncompleted items by aisle when available
+  if (uncompleted.some(item => item.storeAisle !== undefined && item.storeAisle !== null)) {
+    uncompleted.sort((a, b) => {
+      const aisleA = a.storeAisle !== undefined && a.storeAisle !== null ? a.storeAisle : Number.MAX_SAFE_INTEGER
+      const aisleB = b.storeAisle !== undefined && b.storeAisle !== null ? b.storeAisle : Number.MAX_SAFE_INTEGER
+      return aisleA - aisleB
+    })
+  }
+
+  // Sort by category as secondary sort
+  const uncompletedByCategory: Record<string, GroceryItem[]> = {}
+  let result: GroceryItem[] = []
+
+  // Group by category
+  uncompleted.forEach(item => {
+    const category = item.category || 'Uncategorized'
+    if (!uncompletedByCategory[category]) {
+      uncompletedByCategory[category] = []
+    }
+    uncompletedByCategory[category].push(item)
+  })
+
+  // Add items by category
+  Object.keys(uncompletedByCategory).sort().forEach(category => {
+    result = result.concat(uncompletedByCategory[category])
+  })
+
+  // If no categories or aisles, just use uncompleted items as is
+  if (result.length === 0) {
+    result = uncompleted
+  }
+
+  // Add completed items at the end
+  return [...result, ...completed]
 })
 
 // Add these types at the top of the script section
@@ -256,6 +309,109 @@ const handleDeleteCompleted = async () => {
     error.value = e.message
   }
 }
+
+const handlePrintList = () => {
+  // Create a nicely formatted version of the list to print
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    alert('Please allow popups to print the list')
+    return
+  }
+
+  const currentDate = new Date().toLocaleDateString()
+  const items = filteredSortedItems.value
+
+  // Organize by category if there are categories
+  const categories: Record<string, GroceryItem[]> = {}
+  let hasCategories = false
+
+  items.forEach(item => {
+    const category = item.category || 'Uncategorized'
+    hasCategories = hasCategories || !!item.category
+
+    if (!categories[category]) {
+      categories[category] = []
+    }
+    categories[category].push(item)
+  })
+
+  // Generate HTML for printing
+  let html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${list.value?.name || 'Grocery List'} - ${currentDate}</title>
+      <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1 { color: #975A5C; }
+        h2 { color: #975A5C; margin-top: 20px; border-bottom: 1px solid #EED3D4; padding-bottom: 5px; }
+        .item { padding: 8px 0; display: flex; align-items: center; }
+        .checkbox { width: 20px; height: 20px; margin-right: 10px; border: 1px solid #ccc; display: inline-block; }
+        .completed { text-decoration: line-through; color: #888; }
+        .quantity { color: #666; margin-left: 10px; font-size: 0.9em; }
+        .price { color: #4B5563; margin-left: 10px; font-size: 0.9em; }
+        .aisle { color: #4B5563; margin-left: 10px; font-size: 0.9em; }
+        .footer { margin-top: 40px; font-size: 0.8em; color: #888; text-align: center; }
+        @media print {
+          body { font-size: 14px; }
+          .no-print { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="no-print" style="text-align: right; margin-bottom: 20px;">
+        <button onclick="window.print()">Print</button>
+      </div>
+      <h1>${list.value?.name || 'Grocery List'}</h1>
+      <div>${currentDate}</div>
+  `
+
+  if (hasCategories) {
+    // Output grouped by category
+    Object.keys(categories).sort().forEach(category => {
+      html += `<h2>${category}</h2>`
+      categories[category].forEach(item => {
+        html += `
+          <div class="item ${item.completed ? 'completed' : ''}">
+            <div class="checkbox"></div>
+            <div>
+              ${item.name}
+              <span class="quantity">× ${item.quantity}${item.unit ? ' ' + item.unit : ''}</span>
+              ${item.estimatedPrice ? `<span class="price">$${item.estimatedPrice.toFixed(2)}</span>` : ''}
+              ${item.storeAisle ? `<span class="aisle">Aisle ${item.storeAisle}</span>` : ''}
+            </div>
+          </div>
+        `
+      })
+    })
+  } else {
+    // Simple list without categories
+    items.forEach(item => {
+      html += `
+        <div class="item ${item.completed ? 'completed' : ''}">
+          <div class="checkbox"></div>
+          <div>
+            ${item.name}
+            <span class="quantity">× ${item.quantity}${item.unit ? ' ' + item.unit : ''}</span>
+            ${item.estimatedPrice ? `<span class="price">$${item.estimatedPrice.toFixed(2)}</span>` : ''}
+            ${item.storeAisle ? `<span class="aisle">Aisle ${item.storeAisle}</span>` : ''}
+          </div>
+        </div>
+      `
+    })
+  }
+
+  html += `
+      <div class="footer">
+        Generated from Groc List on ${currentDate}
+      </div>
+    </body>
+    </html>
+  `
+
+  printWindow.document.write(html)
+  printWindow.document.close()
+}
 </script>
 
 <template>
@@ -347,6 +503,26 @@ const handleDeleteCompleted = async () => {
           </div>
         </div>
       </div>
+
+      <!-- Print button -->
+      <button @click="handlePrintList"
+        class="text-gray-600 hover:text-gray-900 p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-500"
+        title="Print or Export List">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+        </svg>
+      </button>
+
+      <!-- Shopping Mode toggle -->
+      <button @click="isShoppingMode = !isShoppingMode"
+        class="text-gray-600 hover:text-gray-900 p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-500"
+        :class="{ 'bg-pink-100 text-pink-800': isShoppingMode }" title="Toggle Shopping Mode">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      </button>
     </div>
 
     <!-- Error Message -->
@@ -355,7 +531,7 @@ const handleDeleteCompleted = async () => {
     </div>
 
     <!-- Add Item Form -->
-    <div class="bg-white shadow-sm rounded-lg p-4 mb-6">
+    <div v-if="!isShoppingMode" class="bg-white shadow-sm rounded-lg p-4 mb-6">
       <form @submit.prevent="handleAddItem()" class="flex flex-col gap-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div class="col-span-1 sm:col-span-2">
@@ -436,44 +612,70 @@ const handleDeleteCompleted = async () => {
     </div>
 
     <!-- Filter and Sort Options -->
-    <div class="bg-white shadow-sm rounded-lg p-3 mb-4 flex flex-col sm:flex-row justify-between gap-3 text-sm">
-      <div class="flex items-center gap-2">
-        <label for="filterBy" class="font-medium text-gray-700">Filter:</label>
-        <select id="filterBy" v-model="filterBy"
-          class="rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm">
-          <option value="all">All Items</option>
-          <option value="uncompleted">Uncompleted Only</option>
-          <option value="completed">Completed Only</option>
-          <option v-for="category in uniqueCategories" :key="category" :value="category">
-            {{ category }}
-          </option>
-        </select>
+    <div v-if="!isShoppingMode" class="bg-white shadow-sm rounded-lg p-3 mb-4 flex flex-col gap-3 text-sm">
+      <!-- Search Bar -->
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <input type="text" v-model="searchQuery" placeholder="Search items..."
+          class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm" />
       </div>
-      <div class="flex items-center gap-2">
-        <label for="sortBy" class="font-medium text-gray-700">Sort By:</label>
-        <select id="sortBy" v-model="sortBy"
-          class="rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm">
-          <option value="order">Custom Order</option>
-          <option value="name">Name A-Z</option>
-          <option value="category">Category</option>
-          <option value="price">Price</option>
-          <option value="aisle">Aisle</option>
-          <option value="recent">Recently Added</option>
-        </select>
+
+      <div class="flex flex-col sm:flex-row justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <label for="filterBy" class="font-medium text-gray-700">Filter:</label>
+          <select id="filterBy" v-model="filterBy"
+            class="rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm">
+            <option value="all">All Items</option>
+            <option value="uncompleted">Uncompleted Only</option>
+            <option value="completed">Completed Only</option>
+            <option v-for="category in uniqueCategories" :key="category" :value="category">
+              {{ category }}
+            </option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="sortBy" class="font-medium text-gray-700">Sort By:</label>
+          <select id="sortBy" v-model="sortBy"
+            class="rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm">
+            <option value="order">Custom Order</option>
+            <option value="name">Name A-Z</option>
+            <option value="category">Category</option>
+            <option value="price">Price</option>
+            <option value="aisle">Aisle</option>
+            <option value="recent">Recently Added</option>
+          </select>
+        </div>
       </div>
+    </div>
+
+    <!-- Shopping Mode Banner -->
+    <div v-if="isShoppingMode"
+      class="bg-pink-50 border border-pink-200 rounded-lg p-3 mb-4 text-pink-800 text-sm flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+        <span>Shopping Mode Active – Tap items to mark as collected</span>
+      </div>
+      <button @click="isShoppingMode = false" class="text-pink-700 px-2 py-1 rounded hover:bg-pink-100 text-xs">
+        Exit
+      </button>
     </div>
 
     <!-- Items List -->
     <div class="bg-white shadow-sm rounded-lg divide-y">
-      <draggable v-model="items" @end="handleReorder" item-key="id" handle=".drag-handle" :animation="200"
-        ghost-class="bg-pink-50" :move="({ relatedContext, draggedContext }: MoveEvent) => {
+      <draggable v-if="!isShoppingMode" v-model="items" @end="handleReorder" item-key="id" handle=".drag-handle"
+        :animation="200" ghost-class="bg-pink-50" :move="({ relatedContext, draggedContext }: MoveEvent) => {
           return draggedContext.element.completed === relatedContext.element?.completed
         }" :disabled="sortBy !== 'order'">
         <template #item="{ element: item }">
-          <div v-if="(filterBy === 'all' ||
-            (filterBy === 'uncompleted' && !item.completed) ||
-            (filterBy === 'completed' && item.completed) ||
-            (item.category === filterBy))"
+          <div v-if="filteredSortedItems.includes(item)"
             class="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors group"
             :class="{ 'bg-gray-50': item.completed }">
             <div class="flex items-center space-x-3 flex-1">
@@ -538,6 +740,67 @@ const handleDeleteCompleted = async () => {
         </template>
       </draggable>
 
+      <!-- Shopping Mode Item Display -->
+      <div v-if="isShoppingMode">
+        <!-- Category Headers -->
+        <template v-for="(item, index) in shoppingModeItems" :key="item.id">
+          <!-- Category header -->
+          <div v-if="index === 0 || item.category !== shoppingModeItems[index - 1].category"
+            class="px-4 py-2 bg-gray-50 text-sm font-medium text-gray-700">
+            {{ item.category || 'Uncategorized' }}
+            <span v-if="item.storeAisle" class="ml-2 text-gray-500">
+              (Aisle {{ item.storeAisle }})
+            </span>
+          </div>
+
+          <!-- Shopping Mode Item -->
+          <div @click="handleToggleComplete(item.id, !item.completed)"
+            class="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
+            :class="{ 'bg-green-50': item.completed }">
+            <div class="flex items-center space-x-3 flex-1">
+              <div class="flex-shrink-0">
+                <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center"
+                  :class="item.completed ? 'border-green-500 bg-green-500' : 'border-gray-300'">
+                  <svg v-if="item.completed" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+
+              <div class="flex flex-col">
+                <div class="flex items-center gap-2">
+                  <span :class="{ 'line-through text-gray-500': item.completed }">
+                    {{ item.name }}
+                  </span>
+                  <span class="text-sm text-gray-500">
+                    × {{ item.quantity }} {{ item.unit || '' }}
+                  </span>
+                </div>
+
+                <div class="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                  <span v-if="item.estimatedPrice" class="flex items-center gap-1">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    ${{ item.estimatedPrice.toFixed(2) }}
+                  </span>
+
+                  <span v-if="item.storeAisle" class="flex items-center gap-1">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                    Aisle {{ item.storeAisle }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
       <!-- Empty State - Show when no items match the filter -->
       <div v-if="filteredSortedItems.length === 0" class="p-8 text-center">
         <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -550,12 +813,23 @@ const handleDeleteCompleted = async () => {
       </div>
     </div>
 
-    <!-- Completed Items Summary -->
-    <div v-if="items.length > 0" class="mt-4 text-sm text-gray-500 flex items-center gap-2">
-      <svg class="h-5 w-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-      </svg>
-      {{items.filter(item => item.completed).length}} of {{ items.length }} items completed
+    <!-- Completed Items Summary with Clear Completed button -->
+    <div v-if="items.length > 0" class="mt-4 flex justify-between items-center">
+      <div class="text-sm text-gray-500 flex items-center gap-2">
+        <svg class="h-5 w-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        {{items.filter(item => item.completed).length}} of {{ items.length }} items completed
+      </div>
+
+      <button v-if="completedItems.length > 0" @click="handleDeleteCompleted"
+        class="flex items-center gap-1 text-sm text-red-600 hover:text-red-800 py-1 px-2 rounded-md hover:bg-red-50 transition-colors">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+        Clear {{ completedItems.length }} Completed
+      </button>
     </div>
   </div>
 </template>

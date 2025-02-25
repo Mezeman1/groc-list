@@ -45,6 +45,9 @@ const searchQuery = ref('')
 const isShoppingMode = ref(false)
 const quickAddItem = ref('')
 
+// Add a new ref for focus mode
+const isShoppingFocusMode = ref(false)
+
 const listId = route.params.id as string
 
 // Add these computed properties after the existing refs
@@ -172,6 +175,20 @@ const totalEstimatedCost = computed(() => {
       : 0
     return sum + itemCost
   }, 0)
+})
+
+// Add a computed property for progress percentage
+const shoppingProgress = computed(() => {
+  const total = items.value.length
+  const completed = items.value.filter(item => item.completed).length
+
+  if (total === 0) return 0
+  return Math.round((completed / total) * 100)
+})
+
+// Add a computed property for active shopping items (uncompleted items in shopping mode)
+const activeShoppingItems = computed(() => {
+  return shoppingModeItems.value.filter(item => !item.completed)
 })
 
 // Add these types at the top of the script section
@@ -361,17 +378,32 @@ watch(isShoppingMode, (newValue) => {
     localStorage.setItem(`shopping-mode-tooltip-seen-${listId}`, 'true')
   }
 })
+
+const toggleFocusMode = () => {
+  isShoppingFocusMode.value = !isShoppingFocusMode.value
+}
 </script>
 
 <template>
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-    <!-- Header with back button -->
-    <ListHeader :list="list" :item-count="items.length" :is-owner="isListOwner()" :members="members"
-      :is-shopping-mode="isShoppingMode" @toggle-shopping-mode="toggleShoppingMode"
-      @remove-member="handleRemoveMember" />
+    <!-- Header with back button - Hide in focus mode -->
+    <ListHeader v-if="!isShoppingFocusMode || !isShoppingMode" :list="list" :item-count="items.length"
+      :is-owner="isListOwner()" :members="members" :is-shopping-mode="isShoppingMode"
+      @toggle-shopping-mode="toggleShoppingMode" @remove-member="handleRemoveMember" />
+
+    <!-- Exit Focus Mode Button - Only visible in focus mode -->
+    <div v-if="isShoppingFocusMode && isShoppingMode" class="py-2">
+      <button @click="toggleFocusMode"
+        class="flex items-center text-xs text-pink-600 hover:text-pink-800 py-1 px-2 rounded-md hover:bg-pink-50">
+        <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Exit Focus Mode
+      </button>
+    </div>
 
     <!-- Shopping Mode Onboarding Tooltip -->
-    <div v-if="showShoppingModeTooltip && items.length > 2"
+    <div v-if="showShoppingModeTooltip && items.length > 2 && !isShoppingFocusMode"
       class="fixed bottom-4 right-4 w-80 bg-white rounded-lg shadow-xl border border-pink-200 p-4 z-50 animate-bounce-once">
       <div class="absolute -top-2 -right-2">
         <button @click="dismissShoppingModeTooltip"
@@ -454,17 +486,31 @@ watch(isShoppingMode, (newValue) => {
       </div>
     </div>
 
+    <!-- Shopping Progress Bar - Only in shopping mode -->
+    <div v-if="isShoppingMode" class="bg-white shadow-sm rounded-lg p-3 mb-2 transition-all"
+      :class="{ 'shadow-md border-l-4 border-green-500': shoppingProgress > 0 }">
+      <div class="flex items-center justify-between mb-1">
+        <div class="text-sm font-medium text-gray-700">Shopping Progress</div>
+        <div class="text-sm text-gray-500">{{items.filter(item => item.completed).length}} / {{ items.length }} items
+        </div>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-2.5">
+        <div class="bg-green-500 h-2.5 rounded-full transition-all duration-500"
+          :style="{ width: `${shoppingProgress}%` }"></div>
+      </div>
+    </div>
 
-    <!-- Shopping Mode Banner -->
+    <!-- Shopping Mode Banner - Compact in focus mode -->
     <div v-if="isShoppingMode"
-      class="bg-gradient-to-r from-pink-600 to-pink-500 text-white rounded-lg p-3 mb-4 shadow-md relative overflow-hidden">
+      class="bg-gradient-to-r from-pink-600 to-pink-500 text-white rounded-lg p-3 mb-4 shadow-md relative overflow-hidden transition-all"
+      :class="{ 'py-2 px-3': isShoppingFocusMode }">
       <!-- Visual indicator for shopping mode -->
-      <div class="absolute top-0 right-0 w-16 h-16 transform translate-x-6 -translate-y-6">
+      <div v-if="!isShoppingFocusMode" class="absolute top-0 right-0 w-16 h-16 transform translate-x-6 -translate-y-6">
         <div class="absolute top-0 right-0 w-full h-full bg-pink-400 opacity-30 rounded-full"></div>
       </div>
 
       <div class="flex items-center justify-between relative z-10">
-        <div class="flex items-center gap-2">
+        <div v-if="!isShoppingFocusMode" class="flex items-center gap-2">
           <svg class="h-5 w-5 flex-shrink-0 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -474,14 +520,30 @@ watch(isShoppingMode, (newValue) => {
             <div class="text-xs text-pink-100">Items grouped by category & aisle</div>
           </div>
         </div>
-        <button @click="isShoppingMode = false"
-          class="bg-white text-pink-600 hover:bg-pink-50 px-3 py-1 rounded text-xs font-medium">
-          Exit
-        </button>
+
+        <!-- Action buttons -->
+        <div class="flex items-center gap-2">
+          <!-- Focus Mode Toggle -->
+          <button @click="toggleFocusMode" v-if="!isShoppingFocusMode"
+            class="bg-white/20 text-white hover:bg-white/30 px-2 py-1 rounded text-xs font-medium flex items-center">
+            <svg class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+            </svg>
+            Focus Mode
+          </button>
+
+          <!-- Exit Shopping Mode Button -->
+          <button @click="isShoppingMode = false"
+            class="bg-white text-pink-600 hover:bg-pink-50 px-3 py-1 rounded text-xs font-medium">
+            Exit
+          </button>
+        </div>
       </div>
 
-      <!-- Quick Add -->
-      <form @submit.prevent="handleQuickAdd" class="mt-2 flex items-center gap-2 relative z-10">
+      <!-- Quick Add Form - Hide in focus mode if not needed -->
+      <form v-if="!isShoppingFocusMode" @submit.prevent="handleQuickAdd"
+        class="mt-2 flex items-center gap-2 relative z-10">
         <div class="flex-1 relative rounded-md shadow-sm">
           <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
             <svg class="h-4 w-4 text-pink-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -498,8 +560,8 @@ watch(isShoppingMode, (newValue) => {
       </form>
     </div>
 
-    <!-- Items List -->
-    <div class="bg-white shadow-sm rounded-lg divide-y">
+    <!-- Items List - Optimized in focus mode -->
+    <div class="bg-white shadow-sm rounded-lg divide-y" :class="{ 'shadow-md': isShoppingFocusMode }">
       <draggable v-if="!isShoppingMode" v-model="items" @end="handleReorder" item-key="id" handle=".drag-handle"
         :animation="200" ghost-class="bg-pink-50" :move="({ relatedContext, draggedContext }: MoveEvent) => {
           return draggedContext.element.completed === relatedContext.element?.completed
@@ -510,26 +572,43 @@ watch(isShoppingMode, (newValue) => {
         </template>
       </draggable>
 
-      <!-- Shopping Mode Item Display -->
+      <!-- Shopping Mode Item Display - Modified for focus mode -->
       <div v-if="isShoppingMode">
-        <!-- Category Headers -->
+        <!-- Items to get -->
         <template v-for="(item, index) in shoppingModeItems" :key="item.id">
-          <!-- Category header -->
-          <div v-if="index === 0 || item.category !== shoppingModeItems[index - 1].category"
-            class="px-4 py-2 bg-gray-50 text-sm font-medium text-gray-700">
-            {{ item.category || 'Uncategorized' }}
-            <span v-if="item.storeAisle" class="ml-2 text-gray-500">
-              (Aisle {{ item.storeAisle }})
-            </span>
-          </div>
+          <!-- Only show uncompleted items in focus mode, or all items in regular mode -->
+          <template v-if="!item.completed || !isShoppingFocusMode">
+            <!-- Category header - Don't show completed categories in focus mode -->
+            <div v-if="(index === 0 || item.category !== shoppingModeItems[index - 1].category) &&
+              (!isShoppingFocusMode || !item.completed)" class="px-4 py-2 bg-gray-50 text-sm font-medium text-gray-700"
+              :class="{ 'sticky top-0 z-10 shadow-sm': isShoppingFocusMode }">
+              {{ item.category || 'Uncategorized' }}
+              <span v-if="item.storeAisle" class="ml-2 text-gray-500">
+                (Aisle {{ item.storeAisle }})
+              </span>
+            </div>
 
-          <!-- Shopping Mode Item Component -->
-          <ShoppingModeItem :item="item" @toggle-complete="handleToggleComplete" />
+            <!-- Shopping Mode Item Component - Slightly larger touch targets in focus mode -->
+            <ShoppingModeItem :item="item" @toggle-complete="handleToggleComplete"
+              :class="{ 'py-3': isShoppingFocusMode }" />
+          </template>
         </template>
+
+        <!-- When in focus mode, show a message when all items are complete -->
+        <div v-if="isShoppingFocusMode && activeShoppingItems.length === 0" class="p-6 text-center">
+          <svg class="mx-auto h-12 w-12 text-green-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <h3 class="text-lg font-medium text-gray-900 mb-1">All Done!</h3>
+          <p class="text-gray-500 mb-3">You've completed all items on your shopping list.</p>
+          <button @click="toggleFocusMode" class="text-sm text-pink-600 font-medium">
+            Exit Focus Mode
+          </button>
+        </div>
       </div>
 
       <!-- Empty State - Show when no items match the filter -->
-      <div v-if="filteredSortedItems.length === 0" class="p-8 text-center">
+      <div v-if="filteredSortedItems.length === 0 && !isShoppingMode" class="p-8 text-center">
         <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -540,8 +619,9 @@ watch(isShoppingMode, (newValue) => {
       </div>
     </div>
 
-    <!-- Completed Items Summary with Clear Completed button -->
-    <div v-if="items.length > 0" class="mt-4 flex justify-between items-center">
+    <!-- Completed Items Summary with Clear Completed button - Hide in focus mode -->
+    <div v-if="items.length > 0 && (!isShoppingMode || !isShoppingFocusMode)"
+      class="mt-4 flex justify-between items-center">
       <div class="text-sm text-gray-500 flex items-center gap-2">
         <svg class="h-5 w-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -576,5 +656,16 @@ watch(isShoppingMode, (newValue) => {
 
 .animate-bounce-once {
   animation: bounce-once 2s ease-in-out 3;
+}
+
+/* Add a subtle transition for focus mode */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+.scale-98 {
+  transform: scale(0.98);
 }
 </style>

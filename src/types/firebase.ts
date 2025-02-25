@@ -4,6 +4,11 @@ export interface GroceryList {
   createdBy: string
   createdAt: Date
   members: string[] // array of user IDs who have access to this list
+  dueDate?: Date // Optional due date for the shopping trip
+  repeatSchedule?: 'daily' | 'weekly' | 'biweekly' | 'monthly' // Optional schedule for recurring lists
+  storeId?: string // Reference to preferred store for this list
+  budget?: number // Optional budget for this shopping list
+  actualCost?: number // Actual spent amount
 }
 
 export interface GroceryItem {
@@ -11,12 +16,17 @@ export interface GroceryItem {
   listId: string
   name: string
   quantity: number
+  unit?: string // e.g., 'kg', 'lbs', 'oz', 'items', etc.
   completed: boolean
   createdBy: string
   createdAt: Date
   completedBy?: string
   completedAt?: Date
   order: number
+  category?: string // e.g., 'Produce', 'Dairy', 'Meat', 'Bakery', etc.
+  storeAisle?: number // Store aisle number to help users locate items
+  estimatedPrice?: number // Estimated price per unit
+  actualPrice?: number // Actual price paid per unit
 }
 
 export interface ItemCorrelation {
@@ -45,4 +55,45 @@ export interface ListInvitation {
   status: 'pending' | 'accepted' | 'declined'
   createdAt: Date
   respondedAt?: Date
+}
+
+export interface Store {
+  id: string
+  name: string
+  userId: string
+  createdAt: Date
+  categories: StoreCategory[]
+}
+
+export interface StoreCategory {
+  id: string
+  name: string
+  aisleNumber?: number
+  order: number
+}
+
+export interface ShoppingTrip {
+  id: string
+  listId: string
+  userId: string
+  storeId?: string
+  startTime: Date
+  endTime?: Date
+  totalCost: number
+  itemCount: number
+  notes?: string
+}
+
+export interface ShoppingAnalytics {
+  userId: string
+  monthlySpending: {
+    [month: string]: number // Format: 'YYYY-MM'
+  }
+  categorySpending: {
+    [category: string]: number
+  }
+  frequentItems: {
+    [itemName: string]: number
+  }
+  lastUpdated: Date
 }

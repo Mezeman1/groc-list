@@ -35,7 +35,17 @@ export const createList = async (name: string) => {
   return docRef.id
 }
 
-export const addItemToList = async (listId: string, itemName: string, quantity: number = 1) => {
+export const addItemToList = async (
+  listId: string,
+  itemName: string,
+  quantity: number = 1,
+  options: {
+    unit?: string
+    category?: string
+    storeAisle?: number
+    estimatedPrice?: number
+  } = {}
+) => {
   if (!auth.currentUser) throw new Error('User not authenticated')
 
   // Get the current highest order
@@ -43,6 +53,7 @@ export const addItemToList = async (listId: string, itemName: string, quantity: 
   const querySnapshot = await getDocs(q)
   const highestOrder = querySnapshot.empty ? 0 : querySnapshot.docs[0].data().order || 0
 
+  // Create the base item
   const newItem: Omit<GroceryItem, 'id'> = {
     listId,
     name: itemName,
@@ -52,6 +63,13 @@ export const addItemToList = async (listId: string, itemName: string, quantity: 
     createdAt: new Date(),
     order: highestOrder + 1,
   }
+
+  // Add optional fields only if they have values
+  if (options.unit) newItem.unit = options.unit
+  if (options.category) newItem.category = options.category
+  if (options.storeAisle !== undefined && options.storeAisle !== null) newItem.storeAisle = options.storeAisle
+  if (options.estimatedPrice !== undefined && options.estimatedPrice !== null)
+    newItem.estimatedPrice = options.estimatedPrice
 
   const docRef = await addDoc(collection(db, 'items'), newItem)
   return docRef.id
@@ -358,4 +376,24 @@ export const onListItemsChange = (listId: string, callback: (items: GroceryItem[
     })) as GroceryItem[]
     callback(items)
   })
+}
+
+export const deleteCompletedItems = async (listId: string) => {
+  if (!auth.currentUser) throw new Error('User not authenticated')
+
+  // Get all completed items for this list
+  const q = query(collection(db, 'items'), where('listId', '==', listId), where('completed', '==', true))
+
+  const querySnapshot = await getDocs(q)
+
+  // Use a batch to delete all items at once
+  const batch = writeBatch(db)
+  querySnapshot.docs.forEach(doc => {
+    batch.delete(doc.ref)
+  })
+
+  // Commit the batch
+  await batch.commit()
+
+  return querySnapshot.docs.length // Return number of items deleted
 }

@@ -457,43 +457,43 @@ watch(isShoppingMode, (newValue) => {
 
     <!-- Shopping Mode Banner -->
     <div v-if="isShoppingMode"
-      class="bg-gradient-to-r from-pink-600 to-pink-500 text-white rounded-lg p-4 mb-4 shadow-md relative overflow-hidden">
+      class="bg-gradient-to-r from-pink-600 to-pink-500 text-white rounded-lg p-3 mb-4 shadow-md relative overflow-hidden">
       <!-- Visual indicator for shopping mode -->
-      <div class="absolute top-0 right-0 w-24 h-24 transform translate-x-8 -translate-y-8">
+      <div class="absolute top-0 right-0 w-16 h-16 transform translate-x-6 -translate-y-6">
         <div class="absolute top-0 right-0 w-full h-full bg-pink-400 opacity-30 rounded-full"></div>
       </div>
 
       <div class="flex items-center justify-between relative z-10">
         <div class="flex items-center gap-2">
-          <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="h-5 w-5 flex-shrink-0 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
-          <div>
-            <div class="font-bold text-lg">Shopping Mode Active</div>
-            <div class="text-sm text-pink-100">Items grouped by category and aisle for easier shopping</div>
+          <div class="flex-grow">
+            <div class="font-bold text-sm sm:text-base">Shopping Mode</div>
+            <div class="text-xs text-pink-100">Items grouped by category & aisle</div>
           </div>
         </div>
         <button @click="isShoppingMode = false"
-          class="bg-white text-pink-600 hover:bg-pink-50 px-3 py-1.5 rounded font-medium text-sm">
-          Exit Shopping Mode
+          class="bg-white text-pink-600 hover:bg-pink-50 px-3 py-1 rounded text-xs font-medium">
+          Exit
         </button>
       </div>
 
       <!-- Quick Add -->
-      <form @submit.prevent="handleQuickAdd" class="mt-4 flex items-center gap-2 relative z-10">
+      <form @submit.prevent="handleQuickAdd" class="mt-2 flex items-center gap-2 relative z-10">
         <div class="flex-1 relative rounded-md shadow-sm">
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg class="h-5 w-5 text-pink-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+            <svg class="h-4 w-4 text-pink-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
           </div>
-          <input type="text" v-model="quickAddItem" placeholder="Quickly add a missed item..."
-            class="block w-full rounded-md border-0 ring-1 ring-inset ring-pink-300 bg-white/90 focus:ring-2 focus:ring-white pl-10 pr-3 py-2 text-sm" />
+          <input type="text" v-model="quickAddItem" placeholder="Add a missed item..."
+            class="block w-full rounded-md border-0 ring-1 ring-inset ring-pink-300 bg-white/90 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-white pl-7 pr-2 py-1.5 text-sm" />
         </div>
         <button type="submit"
-          class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-pink-600 bg-white hover:bg-pink-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
-          Add Item
+          class="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-xs font-medium text-pink-600 bg-white hover:bg-pink-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+          Add
         </button>
       </form>
     </div>

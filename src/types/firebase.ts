@@ -27,6 +27,10 @@ export interface GroceryItem {
   storeAisle?: number // Store aisle number to help users locate items
   estimatedPrice?: number // Estimated price per unit
   actualPrice?: number // Actual price paid per unit
+  note?: string // Additional notes about the item (e.g., "Get the organic one")
+  favorite?: boolean // Whether this is a favorite/frequently purchased item
+  brand?: string // Preferred brand
+  pictureUrl?: string // Optional image of the item
 }
 
 export interface ItemCorrelation {

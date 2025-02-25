@@ -44,6 +44,9 @@ export const addItemToList = async (
     category?: string
     storeAisle?: number
     estimatedPrice?: number
+    note?: string
+    favorite?: boolean
+    brand?: string
   } = {}
 ) => {
   if (!auth.currentUser) throw new Error('User not authenticated')
@@ -70,6 +73,9 @@ export const addItemToList = async (
   if (options.storeAisle !== undefined && options.storeAisle !== null) newItem.storeAisle = options.storeAisle
   if (options.estimatedPrice !== undefined && options.estimatedPrice !== null)
     newItem.estimatedPrice = options.estimatedPrice
+  if (options.note) newItem.note = options.note
+  if (options.favorite !== undefined) newItem.favorite = options.favorite
+  if (options.brand) newItem.brand = options.brand
 
   const docRef = await addDoc(collection(db, 'items'), newItem)
   return docRef.id
@@ -396,4 +402,25 @@ export const deleteCompletedItems = async (listId: string) => {
   await batch.commit()
 
   return querySnapshot.docs.length // Return number of items deleted
+}
+
+export const updateListBudget = async (listId: string, budget: number | null) => {
+  if (!auth.currentUser) throw new Error('User not authenticated')
+
+  // Check if user is owner or member
+  const listRef = doc(db, 'lists', listId)
+  const listDoc = await getDoc(listRef)
+
+  if (!listDoc.exists()) throw new Error('List not found')
+
+  const list = listDoc.data() as GroceryList
+  if (!list.members.includes(auth.currentUser.uid)) {
+    throw new Error('You do not have permission to update this list')
+  }
+
+  // Update the budget
+  await updateDoc(listRef, {
+    budget: budget,
+    updatedAt: new Date(),
+  })
 }

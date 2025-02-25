@@ -12,7 +12,8 @@ import {
   removeMemberFromList,
   reorderItems,
   onListItemsChange,
-  deleteCompletedItems
+  deleteCompletedItems,
+  updateListBudget
 } from '@/services/firebase-service'
 import { updateItemCorrelations } from '@/services/suggestions-service'
 import type { GroceryItem, GroceryList, User } from '@/types/firebase'
@@ -30,6 +31,7 @@ const newItemUnit = ref('')
 const newItemCategory = ref('')
 const newItemAisle = ref<number | null>(null)
 const newItemPrice = ref<number | null>(null)
+const newItemNote = ref('')
 const error = ref('')
 const members = ref<User[]>([])
 const isLoadingMembers = ref(false)
@@ -38,6 +40,10 @@ const filterBy = ref('all')
 const sortBy = ref('order')
 const searchQuery = ref('')
 const isShoppingMode = ref(false)
+const showBudgetModal = ref(false)
+const listBudget = ref<number | null>(null)
+const showBudgetWarning = ref(false)
+const quickAddItem = ref('')
 
 const listId = route.params.id as string
 
@@ -158,6 +164,37 @@ const shoppingModeItems = computed(() => {
   return [...result, ...completed]
 })
 
+// Calculate total estimated cost
+const totalEstimatedCost = computed(() => {
+  return items.value.reduce((sum, item) => {
+    const itemCost = item.estimatedPrice
+      ? item.estimatedPrice * item.quantity
+      : 0
+    return sum + itemCost
+  }, 0)
+})
+
+// Calculate budget progress percentage
+const budgetPercentage = computed(() => {
+  if (!list.value?.budget || list.value.budget <= 0) return 0
+
+  const percentage = (totalEstimatedCost.value / list.value.budget) * 100
+  return Math.min(100, Math.round(percentage))
+})
+
+// Check if we're over budget
+const isOverBudget = computed(() => {
+  if (!list.value?.budget) return false
+  return totalEstimatedCost.value > list.value.budget
+})
+
+// Budget status class
+const budgetStatusClass = computed(() => {
+  if (isOverBudget.value) return 'text-red-600'
+  if (budgetPercentage.value > 90) return 'text-orange-600'
+  return 'text-green-600'
+})
+
 // Add these types at the top of the script section
 interface DragContext {
   element: GroceryItem;
@@ -218,29 +255,44 @@ const loadMembers = async () => {
 const handleAddItem = async (itemName: string = newItemName.value.trim()) => {
   if (!itemName) return
 
+  // Store input values in local variables
+  const inputName = itemName
+  const quantity = newItemQuantity.value
+  const unit = newItemUnit.value
+  const category = newItemCategory.value
+  const aisle = newItemAisle.value
+  const price = newItemPrice.value
+  const note = newItemNote.value
+
+  // Clear form immediately
+  newItemName.value = ''
+  newItemQuantity.value = 1
+  newItemUnit.value = ''
+  newItemCategory.value = ''
+  newItemAisle.value = null
+  newItemPrice.value = null
+  newItemNote.value = ''
+
   try {
-    await addItemToList(listId, itemName, newItemQuantity.value, {
-      unit: newItemUnit.value,
-      category: newItemCategory.value,
-      storeAisle: newItemAisle.value || undefined,
-      estimatedPrice: newItemPrice.value || undefined
+    // Use stored values for database operations
+    await addItemToList(listId, inputName, quantity, {
+      unit,
+      category,
+      storeAisle: aisle || undefined,
+      estimatedPrice: price || undefined,
+      note: note || undefined
     })
-    await updateItemCorrelations(itemName, listId)
-    newItemName.value = ''
-    newItemQuantity.value = 1
-    newItemUnit.value = ''
-    newItemCategory.value = ''
-    newItemAisle.value = null
-    newItemPrice.value = null
+    await updateItemCorrelations(inputName, listId)
   } catch (e: any) {
     error.value = e.message
   }
 }
 
 const handleSuggestionSelect = async (suggestion: string) => {
-  // Use the suggestion as the item name but preserve other form values
-  // so users can set quantity, category, etc. before selecting a suggestion
+  // Set the suggestion as the item name
   newItemName.value = suggestion
+
+  // Then call handleAddItem which will handle clearing the form
   await handleAddItem(suggestion)
 }
 
@@ -411,6 +463,41 @@ const handlePrintList = () => {
 
   printWindow.document.write(html)
   printWindow.document.close()
+}
+
+const handleSetBudget = async () => {
+  if (!list.value) return
+
+  try {
+    await updateListBudget(listId, listBudget.value)
+    // Update local list
+    if (list.value) {
+      list.value.budget = listBudget.value === null ? undefined : listBudget.value
+    }
+    showBudgetModal.value = false
+  } catch (e: any) {
+    error.value = e.message
+  }
+}
+
+const openBudgetModal = () => {
+  // Initialize the budget input with the current budget
+  listBudget.value = list.value?.budget || null
+  showBudgetModal.value = true
+}
+
+const handleQuickAdd = async () => {
+  if (!quickAddItem.value.trim()) return
+
+  const itemName = quickAddItem.value.trim()
+  quickAddItem.value = ''
+
+  try {
+    await addItemToList(listId, itemName, 1)
+    await updateItemCorrelations(itemName, listId)
+  } catch (e: any) {
+    error.value = e.message
+  }
 }
 </script>
 
@@ -595,6 +682,13 @@ const handlePrintList = () => {
           </div>
         </div>
 
+        <!-- Notes Field -->
+        <div>
+          <label for="note" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+          <textarea id="note" v-model="newItemNote" rows="2" placeholder="Add any special instructions or notes..."
+            class="shadow-sm focus:ring-pink-500 focus:border-pink-500 block w-full sm:text-sm border-gray-300 rounded-md"></textarea>
+        </div>
+
         <div class="flex justify-end">
           <button type="submit"
             class="bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 flex items-center justify-center gap-2">
@@ -653,19 +747,69 @@ const handlePrintList = () => {
       </div>
     </div>
 
-    <!-- Shopping Mode Banner -->
-    <div v-if="isShoppingMode"
-      class="bg-pink-50 border border-pink-200 rounded-lg p-3 mb-4 text-pink-800 text-sm flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-        <span>Shopping Mode Active – Tap items to mark as collected</span>
+    <!-- Budget Summary -->
+    <div v-if="items.some(item => item.estimatedPrice)" class="bg-white shadow-sm rounded-lg p-3 mb-4">
+      <div class="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 text-sm font-medium mb-1">
+            <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Estimated Total:</span>
+            <span :class="budgetStatusClass" class="font-bold">${{ totalEstimatedCost.toFixed(2) }}</span>
+            <span v-if="list?.budget" class="text-gray-500">of ${{ list.budget.toFixed(2) }} budget</span>
+          </div>
+
+          <!-- Budget Progress Bar -->
+          <div v-if="list?.budget" class="w-full bg-gray-200 rounded-full h-2.5 mb-1">
+            <div class="h-2.5 rounded-full" :style="{ width: `${budgetPercentage}%` }" :class="[
+              isOverBudget ? 'bg-red-600' :
+                budgetPercentage > 90 ? 'bg-orange-500' : 'bg-green-500'
+            ]">
+            </div>
+          </div>
+          <div v-if="list?.budget" class="text-xs text-gray-500">
+            {{ isOverBudget ? 'Over budget!' : `${(100 - budgetPercentage)}% remaining` }}
+          </div>
+        </div>
+
+        <button @click="openBudgetModal"
+          class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+          {{ list?.budget ? 'Update Budget' : 'Set Budget' }}
+        </button>
       </div>
-      <button @click="isShoppingMode = false" class="text-pink-700 px-2 py-1 rounded hover:bg-pink-100 text-xs">
-        Exit
-      </button>
+    </div>
+
+    <!-- Shopping Mode Banner -->
+    <div v-if="isShoppingMode" class="bg-pink-50 border border-pink-200 rounded-lg p-3 mb-4 text-pink-800">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2 text-sm font-medium">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <span>Shopping Mode Active</span>
+        </div>
+        <button @click="isShoppingMode = false" class="text-pink-700 px-2 py-1 rounded hover:bg-pink-100 text-xs">
+          Exit
+        </button>
+      </div>
+
+      <!-- Quick Add -->
+      <form @submit.prevent="handleQuickAdd" class="flex items-center gap-2">
+        <div class="flex-1 relative rounded-md shadow-sm">
+          <input type="text" v-model="quickAddItem" placeholder="Quickly add a missed item..."
+            class="block w-full rounded-md border-pink-300 bg-white focus:border-pink-500 focus:ring-pink-500 pl-3 pr-3 py-2 text-sm" />
+        </div>
+        <button type="submit"
+          class="inline-flex items-center p-2 border border-transparent rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span class="sr-only">Add</span>
+        </button>
+      </form>
     </div>
 
     <!-- Items List -->
@@ -702,6 +846,13 @@ const handlePrintList = () => {
                       class="inline-flex items-center ml-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
                       {{ item.category }}
                     </span>
+                    <!-- Notes indicator if present -->
+                    <span v-if="item.note" class="ml-1 text-gray-500 text-xs" title="Has notes">
+                      <svg class="inline-block h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                      </svg>
+                    </span>
                   </label>
                   <div class="flex items-center gap-1 text-gray-500">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -716,6 +867,10 @@ const handlePrintList = () => {
                       ${{ item.estimatedPrice.toFixed(2) }}
                     </span>
                   </div>
+                </div>
+                <!-- Item notes if present -->
+                <div v-if="item.note" class="text-sm text-gray-500 flex items-start gap-1 ml-5 mt-1 italic">
+                  <span>{{ item.note }}</span>
                 </div>
                 <div v-if="item.storeAisle" class="text-sm text-gray-500">
                   <span class="inline-flex items-center gap-1">
@@ -778,6 +933,11 @@ const handlePrintList = () => {
                   </span>
                 </div>
 
+                <!-- Item notes in shopping mode -->
+                <div v-if="item.note" class="text-xs text-gray-500 italic mb-1">
+                  {{ item.note }}
+                </div>
+
                 <div class="flex items-center gap-3 mt-1 text-xs text-gray-500">
                   <span v-if="item.estimatedPrice" class="flex items-center gap-1">
                     <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -830,6 +990,49 @@ const handlePrintList = () => {
         </svg>
         Clear {{ completedItems.length }} Completed
       </button>
+    </div>
+
+    <!-- Budget Modal -->
+    <div v-if="showBudgetModal"
+      class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6" @click.stop>
+        <h3 class="text-lg font-medium text-gray-900 mb-4">
+          {{ list?.budget ? 'Update Budget' : 'Set Budget' }}
+        </h3>
+
+        <div class="space-y-4">
+          <div>
+            <label for="budget" class="block text-sm font-medium text-gray-700 mb-1">Budget Amount</label>
+            <div class="mt-1 relative rounded-md shadow-sm">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span class="text-gray-500 sm:text-sm">$</span>
+              </div>
+              <input type="number" id="budget" v-model.number="listBudget" min="0" step="0.01"
+                class="focus:ring-pink-500 focus:border-pink-500 block w-full pl-7 pr-12 sm:text-sm border-gray-300 rounded-md"
+                placeholder="0.00" />
+            </div>
+          </div>
+
+          <div class="text-sm text-gray-500" v-if="totalEstimatedCost > 0">
+            <p>Estimated total cost: <span class="font-medium">${{ totalEstimatedCost.toFixed(2) }}</span></p>
+            <p v-if="listBudget !== null && listBudget > 0 && listBudget < totalEstimatedCost"
+              class="text-red-600 mt-1">
+              Warning: This budget is less than your current estimated total.
+            </p>
+          </div>
+
+          <div class="flex justify-end space-x-3 mt-6">
+            <button @click="showBudgetModal = false" type="button"
+              class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+              Cancel
+            </button>
+            <button @click="handleSetBudget" type="button"
+              class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+              {{ listBudget === null ? 'Remove Budget' : 'Save Budget' }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>

@@ -4,6 +4,7 @@ import ItemSuggestions from '@/components/ItemSuggestions.vue'
 
 const props = defineProps<{
     listId: string
+    availableCategories?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -64,15 +65,9 @@ const handleSuggestionSelect = (suggestion: string) => {
                 <select id="category" v-model="newItemCategory"
                     class="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500">
                     <option value="">None</option>
-                    <option value="Produce">Produce</option>
-                    <option value="Dairy">Dairy</option>
-                    <option value="Meat">Meat</option>
-                    <option value="Bakery">Bakery</option>
-                    <option value="Frozen">Frozen</option>
-                    <option value="Pantry">Pantry</option>
-                    <option value="Beverages">Beverages</option>
-                    <option value="Household">Household</option>
-                    <option value="Other">Other</option>
+                    <option v-for="category in availableCategories" :key="category" :value="category">
+                        {{ category }}
+                    </option>
                 </select>
             </div>
 

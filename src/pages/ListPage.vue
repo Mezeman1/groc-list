@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -11,7 +11,9 @@ import {
   getUserById,
   removeMemberFromList,
   onListItemsChange,
+  onListChange,
   deleteCompletedItems,
+  updateListCategories,
 } from '@/services/firebase-service'
 import { updateItemCorrelations } from '@/services/suggestions-service'
 import type { GroceryItem, GroceryList, User } from '@/types/firebase'
@@ -20,6 +22,12 @@ import ListHeader from '@/components/ListHeader.vue'
 import AddItemForm from '@/components/AddItemForm.vue'
 import GroceryListItem from '@/components/GroceryListItem.vue'
 import ShoppingModeItem from '@/components/ShoppingModeItem.vue'
+
+// Default categories used when none are customized
+const DEFAULT_CATEGORIES = [
+  'Produce', 'Dairy', 'Meat', 'Bakery', 'Frozen',
+  'Pantry', 'Beverages', 'Household', 'Other'
+]
 
 const route = useRoute()
 const router = useRouter()
@@ -31,6 +39,9 @@ const members = ref<User[]>([])
 const isLoadingMembers = ref(false)
 const searchQuery = ref('')
 const isShoppingMode = ref(false)
+const quickAddItem = ref('')
+const showCategoryManager = ref(false)
+const newCategory = ref('')
 
 const listId = route.params.id as string
 
@@ -90,10 +101,16 @@ const shoppingProgress = computed(() => {
   return Math.round((completed / total) * 100)
 })
 
+// Available categories for this list
+const availableCategories = computed(() => {
+  return list.value?.categories || [...DEFAULT_CATEGORIES]
+})
+
 const unsubscribeItems = ref<(() => void) | null>(null)
+const unsubscribeList = ref<(() => void) | null>(null)
 
 onMounted(async () => {
-  await loadList()
+  setupRealtimeList()
   setupRealtimeItems()
   await loadMembers()
 })
@@ -102,21 +119,26 @@ onUnmounted(() => {
   if (unsubscribeItems.value) {
     unsubscribeItems.value()
   }
+  if (unsubscribeList.value) {
+    unsubscribeList.value()
+  }
 })
 
-const setupRealtimeItems = () => {
+const setupRealtimeList = () => {
   try {
-    unsubscribeItems.value = onListItemsChange(listId, (newItems) => {
-      items.value = newItems
+    unsubscribeList.value = onListChange(listId, (updatedList) => {
+      list.value = updatedList
     })
   } catch (e: any) {
     error.value = e.message
   }
 }
 
-const loadList = async () => {
+const setupRealtimeItems = () => {
   try {
-    list.value = await getList(listId)
+    unsubscribeItems.value = onListItemsChange(listId, (newItems) => {
+      items.value = newItems
+    })
   } catch (e: any) {
     error.value = e.message
   }
@@ -135,6 +157,13 @@ const loadMembers = async () => {
     isLoadingMembers.value = false
   }
 }
+
+// Add a watch for list changes to update members
+watch(() => list.value, async (newList) => {
+  if (newList && isListOwner()) {
+    await loadMembers()
+  }
+}, { deep: true })
 
 const handleAddItem = async (itemName: string, quantity: number, options: any) => {
   try {
@@ -185,7 +214,6 @@ const handleRemoveMember = async (userId: string) => {
 
   try {
     await removeMemberFromList(listId, userId)
-    await loadList()
     await loadMembers()
   } catch (e: any) {
     error.value = e.message
@@ -208,6 +236,72 @@ const handleDeleteCompleted = async () => {
 
 const toggleShoppingMode = () => {
   isShoppingMode.value = !isShoppingMode.value
+}
+
+const handleQuickAdd = async () => {
+  if (!quickAddItem.value.trim()) return
+
+  const itemName = quickAddItem.value.trim()
+  quickAddItem.value = ''
+
+  try {
+    await addItemToList(listId, itemName, 1)
+    await updateItemCorrelations(itemName, listId)
+  } catch (e: any) {
+    error.value = e.message
+  }
+}
+
+const addCategory = async () => {
+  if (!newCategory.value.trim() || !isListOwner()) return
+
+  const category = newCategory.value.trim()
+  newCategory.value = ''
+
+  try {
+    // If no custom categories yet, use defaults
+    const currentCategories = list.value?.categories || [...DEFAULT_CATEGORIES]
+
+    // Only add if it doesn't already exist
+    if (!currentCategories.includes(category)) {
+      const updatedCategories = [...currentCategories, category]
+      await updateListCategories(listId, updatedCategories)
+      // List will be updated via the realtime listener
+    }
+  } catch (e: any) {
+    error.value = e.message
+  }
+}
+
+const removeCategory = async (category: string) => {
+  if (!isListOwner()) return
+
+  try {
+    // If no custom categories yet, use defaults
+    const currentCategories = list.value?.categories || [...DEFAULT_CATEGORIES]
+
+    // Filter out the category to remove
+    const updatedCategories = currentCategories.filter(c => c !== category)
+
+    // Update the list with the new categories
+    await updateListCategories(listId, updatedCategories)
+  } catch (e: any) {
+    error.value = e.message
+  }
+}
+
+// Function to determine if an item was recently added (within the last 5 minutes)
+const isRecentlyAdded = (item: GroceryItem) => {
+  if (!item.createdAt) return false
+
+  const itemDate = item.createdAt instanceof Date
+    ? item.createdAt
+    : new Date(item.createdAt)
+
+  const now = new Date()
+  const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000)
+
+  return itemDate > fiveMinutesAgo
 }
 </script>
 
@@ -236,8 +330,46 @@ const toggleShoppingMode = () => {
     </div>
 
     <!-- Add Item Form - Hide in shopping mode -->
-    <AddItemForm v-if="!isShoppingMode" :list-id="listId" @add-item="handleAddItem"
-      @suggestion-select="handleSuggestionSelect" />
+    <AddItemForm v-if="!isShoppingMode" :list-id="listId" :available-categories="availableCategories"
+      @add-item="handleAddItem" @suggestion-select="handleSuggestionSelect" />
+
+    <!-- Category Manager Button for list owners - Make it more prominent -->
+    <div v-if="isListOwner() && !isShoppingMode" class="mb-6 mt-1">
+      <button @click="showCategoryManager = !showCategoryManager"
+        class="w-full flex justify-center items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 py-2 px-4 rounded-md shadow-sm transition-colors">
+        <svg class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+        </svg>
+        <span v-if="showCategoryManager">Hide</span><span v-else>Manage</span> Categories
+      </button>
+    </div>
+
+    <!-- Category Manager -->
+    <div v-if="showCategoryManager && isListOwner() && !isShoppingMode" class="bg-white shadow-sm rounded-lg p-4 mb-6">
+      <h3 class="text-sm font-medium text-gray-700 mb-2">Customize Categories</h3>
+
+      <div class="flex flex-wrap gap-2 mb-3">
+        <div v-for="category in availableCategories" :key="category"
+          class="bg-gray-100 px-2 py-1 rounded-md text-sm flex items-center">
+          {{ category }}
+          <button @click="removeCategory(category)" class="ml-1 text-gray-500 hover:text-red-500">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <form @submit.prevent="addCategory" class="flex gap-2">
+        <input type="text" v-model="newCategory" placeholder="New category"
+          class="block flex-1 rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" />
+        <button type="submit"
+          class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+          Add
+        </button>
+      </form>
+    </div>
 
     <!-- Search Bar - Hide in shopping mode -->
     <div v-if="!isShoppingMode" class="bg-white shadow-sm rounded-lg p-3 mb-4">
@@ -251,6 +383,25 @@ const toggleShoppingMode = () => {
         <input type="text" v-model="searchQuery" placeholder="Search items..."
           class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm" />
       </div>
+    </div>
+
+    <!-- Quick Add Form for Shopping Mode -->
+    <div v-if="isShoppingMode" class="bg-white shadow-sm rounded-lg p-3 mb-4">
+      <form @submit.prevent="handleQuickAdd" class="flex items-center gap-2">
+        <div class="flex-1 relative rounded-md shadow-sm">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+          </div>
+          <input type="text" v-model="quickAddItem" placeholder="Quickly add an item..."
+            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm" />
+        </div>
+        <button type="submit"
+          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+          Add
+        </button>
+      </form>
     </div>
 
     <!-- Shopping Progress Bar - Only in shopping mode -->
@@ -268,9 +419,16 @@ const toggleShoppingMode = () => {
 
     <!-- Normal Mode Items List -->
     <div v-if="!isShoppingMode" class="bg-white shadow-sm rounded-lg divide-y">
-      <div v-for="item in filteredItems" :key="item.id">
+      <div v-for="item in filteredItems" :key="item.id" :class="{ 'bg-yellow-50': isRecentlyAdded(item) }">
         <GroceryListItem :item="item" :is-draggable="false" @toggle-complete="handleToggleComplete"
           @delete-item="handleDeleteItem" />
+        <div v-if="isRecentlyAdded(item)" class="px-4 py-1 text-xs text-yellow-600 bg-yellow-50 flex items-center">
+          <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Recently Added
+        </div>
       </div>
 
       <!-- Empty State - Show when no items match the filter -->
@@ -295,8 +453,16 @@ const toggleShoppingMode = () => {
         </div>
 
         <!-- Items in this category -->
-        <div v-for="item in shoppingModeItems.groupedItems[category]" :key="item.id">
+        <div v-for="item in shoppingModeItems.groupedItems[category]" :key="item.id"
+          :class="{ 'bg-yellow-50': isRecentlyAdded(item) }">
           <ShoppingModeItem :item="item" @toggle-complete="handleToggleComplete" />
+          <div v-if="isRecentlyAdded(item)" class="px-4 py-1 text-xs text-yellow-600 bg-yellow-50 flex items-center">
+            <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Recently Added
+          </div>
         </div>
       </div>
 
@@ -305,8 +471,16 @@ const toggleShoppingMode = () => {
         <div class="px-4 py-2 bg-gray-50 text-sm font-medium text-gray-700">
           Completed Items
         </div>
-        <div v-for="item in shoppingModeItems.completed" :key="item.id">
+        <div v-for="item in shoppingModeItems.completed" :key="item.id"
+          :class="{ 'bg-yellow-50': isRecentlyAdded(item) }">
           <ShoppingModeItem :item="item" @toggle-complete="handleToggleComplete" />
+          <div v-if="isRecentlyAdded(item)" class="px-4 py-1 text-xs text-yellow-600 bg-yellow-50 flex items-center">
+            <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Recently Added
+          </div>
         </div>
       </div>
 

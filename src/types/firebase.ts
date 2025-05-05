@@ -4,6 +4,7 @@ export interface GroceryList {
   createdBy: string
   createdAt: Date
   members: string[] // array of user IDs who have access to this list
+  categories?: string[] // Custom categories for this list
   dueDate?: Date // Optional due date for the shopping trip
   repeatSchedule?: 'daily' | 'weekly' | 'biweekly' | 'monthly' // Optional schedule for recurring lists
   storeId?: string // Reference to preferred store for this list

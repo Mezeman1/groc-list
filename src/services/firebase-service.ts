@@ -424,3 +424,40 @@ export const updateListBudget = async (listId: string, budget: number | null) =>
     updatedAt: new Date(),
   })
 }
+
+export const updateListCategories = async (listId: string, categories: string[]) => {
+  if (!auth.currentUser) throw new Error('User not authenticated')
+
+  // Check if user is owner or member
+  const listRef = doc(db, 'lists', listId)
+  const listDoc = await getDoc(listRef)
+
+  if (!listDoc.exists()) throw new Error('List not found')
+
+  const list = listDoc.data() as GroceryList
+  if (!list.members.includes(auth.currentUser.uid)) {
+    throw new Error('You do not have permission to update this list')
+  }
+
+  // Update the categories
+  await updateDoc(listRef, {
+    categories: categories,
+    updatedAt: new Date(),
+  })
+}
+
+// Add this function to get real-time updates for a list
+export const onListChange = (listId: string, callback: (list: GroceryList) => void) => {
+  if (!auth.currentUser) throw new Error('User not authenticated')
+
+  const listRef = doc(db, 'lists', listId)
+
+  return onSnapshot(listRef, snapshot => {
+    if (!snapshot.exists()) {
+      throw new Error('List not found')
+    }
+
+    const list = { id: snapshot.id, ...snapshot.data() } as GroceryList
+    callback(list)
+  })
+}
